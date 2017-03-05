@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tab2_title">Карта:</string>
+    <string name="login_tab2_login">Логин</string>
+    <string name="login_tab2_password">Пароль</string>
+    <string name="cancel">Отмена</string>
+</resources>

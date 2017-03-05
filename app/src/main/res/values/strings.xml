@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">OVEManager</string>
+
+    <string name="tab1_tag">tab_tag_1</string>
+    <string name="tab2_tag">tab_tag_2</string>
+    <string name="tab3_tag">tab_tag_3</string>
+    <string name="tab2_title">Card:</string>
+    <string name="login_tab2_login">Login</string>
+    <string name="login_tab2_password">Password</string>
+    <string name="button_ok">OK</string>
+    <string name="cancel">Cancel</string>
+
+    <string name="section_format">Hello World from section: %1$d</string>
+</resources>

@@ -1,5 +1,6 @@
 <resources>
     <string name="app_name">OVEManager</string>
+    <string name="action_settings">Настройки</string>
 
     <string name="tab1_tag">tab_tag_1</string>
     <string name="tab2_tag">tab_tag_2</string>

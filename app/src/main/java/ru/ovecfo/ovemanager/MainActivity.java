@@ -1,7 +1,9 @@
 package ru.ovecfo.ovemanager;
 
 import android.content.Intent;
+import android.graphics.Bitmap;
 import android.net.Uri;
+import android.net.http.SslError;
 import android.os.AsyncTask;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.widget.DrawerLayout;
@@ -9,6 +11,8 @@ import android.support.v7.app.ActionBar;
 import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.view.View;
+import android.webkit.SslErrorHandler;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.ImageView;
@@ -20,73 +24,28 @@ import org.json.JSONObject;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.SocketTimeoutException;
 import java.net.URL;
 
 import javax.net.ssl.HttpsURLConnection;
 
 public class MainActivity extends AppCompatActivity {
 
-    String mLogin=null;
-    String mAccessKey=null;
-    String mPhoneCode=null;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        final TabHost tabHost = (TabHost) findViewById(R.id.tabHost);
-
-        tabHost.setup();
-
-        TabHost.TabSpec tabSpec = tabHost.newTabSpec(getResources().getString(R.string.tab1_tag));
-        tabSpec.setContent(R.id.tab1);
-        ImageView imageView1=new ImageView(getApplicationContext());
-        imageView1.setImageDrawable(getResources().getDrawable(R.mipmap.ic_launcher));
-        tabSpec.setIndicator(imageView1);
-        tabHost.addTab(tabSpec);
-
-        tabSpec = tabHost.newTabSpec(getResources().getString(R.string.tab2_tag));
-        tabSpec.setContent(R.id.tab2);
-        ImageView imageView2=new ImageView(getApplicationContext());
-        imageView2.setImageDrawable(getResources().getDrawable(R.mipmap.ic_launcher));
-        tabSpec.setIndicator(imageView2);
-        tabHost.addTab(tabSpec);
-
-        tabSpec = tabHost.newTabSpec(getResources().getString(R.string.tab3_tag));
-        tabSpec.setContent(R.id.tab3);
-        ImageView imageView3=new ImageView(getApplicationContext());
-        imageView3.setImageDrawable(getResources().getDrawable(R.mipmap.ic_launcher));
-        tabSpec.setIndicator(imageView3);
-        tabHost.addTab(tabSpec);
-
-        tabHost.setCurrentTab(0);
-
-        tabHost.setOnTabChangedListener(new TabHost.OnTabChangeListener() {
-            @Override
-            public void onTabChanged(String tabId) {
-                try {
-                    ActionBar actionBar = getSupportActionBar();
-                    actionBar.setShowHideAnimationEnabled(false);
-                    if (tabId.equals(getResources().getString(R.string.tab1_tag))) {
-                        actionBar.hide();
-                    }else actionBar.show();
-                    if (tabId.equals(getResources().getString(R.string.tab2_tag))) {
-                        actionBar.setTitle(R.string.tab2_title);
-                    }else actionBar.setTitle(R.string.app_name);
-                }catch (NullPointerException e){
-                    Toast.makeText(getApplicationContext(),e.getMessage(),Toast.LENGTH_LONG).show();
-                    e.printStackTrace();
-                }
-            }
-        });
-
         WebView webView=(WebView)findViewById(R.id.webView);
+        String uri = "https://www.ove-cfo.ru/mobile";
+
         webView.getSettings().setJavaScriptEnabled(true);
         WebViewClient client = new WebViewClient(){
             @Override
@@ -94,10 +53,22 @@ public class MainActivity extends AppCompatActivity {
                 view.loadUrl(url);
                 return true;
             }
+            @Override
+            public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
+                handler.proceed(); // Ignore SSL certificate errors
+            }
+
+            @Override
+            public void onPageStarted(WebView view, String url, Bitmap favicon){
+                view.setVisibility(View.INVISIBLE);
+            }
+            @Override
+            public void onPageFinished(WebView view, String url){
+                view.setVisibility(View.VISIBLE);
+            }
         };
         webView.setWebViewClient(client);
-        webView.loadUrl("http://ove-cfo.ru/eshop/");
-
+        webView.loadUrl(uri);
 
 
         try {
@@ -114,17 +85,19 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-    private class ParseTask extends AsyncTask<String, Void, String> {
+    private class ParseTask extends AsyncTask<JSONObject, Void, String> {
 
         HttpURLConnection urlConnection = null;
         BufferedReader reader = null;
         String resultJson = "";
 
         @Override
-        protected String doInBackground(String... params) {
+        protected String doInBackground(JSONObject... params) {
             // получаем данные с внешнего ресурса
             try {
-                URL url = new URL("http://ove-cfo.ru/remote-store/"+params[0]+"/query.json");
+                JSONObject json=params[0];
+
+                URL url = new URL("http://ove-cfo.ru/remote-store/"+json.get("func")+"/query.json");
 
                 urlConnection = (HttpURLConnection) url.openConnection();
                 urlConnection.setReadTimeout(10000);
@@ -132,9 +105,6 @@ public class MainActivity extends AppCompatActivity {
                 urlConnection.setRequestMethod("POST");
                 urlConnection.setDoInput(true);
                 urlConnection.setDoOutput(true);
-
-                JSONObject json=new JSONObject();
-                json.put("action","blablabla_дадада");
 
                 Uri.Builder builder = new Uri.Builder()
                         .appendQueryParameter("json", json.toString());

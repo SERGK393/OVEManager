@@ -5,17 +5,29 @@ import android.graphics.Bitmap;
 import android.net.Uri;
 import android.net.http.SslError;
 import android.os.AsyncTask;
+import android.os.Build;
+import android.os.Handler;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.Window;
+import android.view.WindowManager;
 import android.webkit.SslErrorHandler;
+import android.webkit.WebResourceError;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.TabHost;
 import android.widget.Toast;
 
@@ -38,15 +50,37 @@ import javax.net.ssl.HttpsURLConnection;
 
 public class MainActivity extends AppCompatActivity {
 
+    WebView webView = null;
+    WebView localWebView = null;
+    ProgressBar progressBar = null;
+    Handler mHandler = null;
+    Runnable mRunnableVisibility = null;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        setTaskBarColored();
 
-        WebView webView=(WebView)findViewById(R.id.webView);
+        webView=(WebView)findViewById(R.id.webView);
+        localWebView=(WebView)findViewById(R.id.localWebView);
+        progressBar=(ProgressBar)findViewById(R.id.progressBar);
         String uri = "https://www.ove-cfo.ru/mobile";
+        String uri_local = "file:///android_asset/index.html";
+
+        mHandler = new Handler();
+        mRunnableVisibility = new Runnable() {
+            @Override
+            public void run() {
+                webView.setVisibility(View.VISIBLE);
+                localWebView.setVisibility(View.GONE);
+                progressBar.setVisibility(View.GONE);
+            }
+        };
 
         webView.getSettings().setJavaScriptEnabled(true);
+        localWebView.getSettings().setJavaScriptEnabled(true);
+        localWebView.loadUrl(uri_local);
         WebViewClient client = new WebViewClient(){
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url){
@@ -60,16 +94,18 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon){
-                view.setVisibility(View.INVISIBLE);
+                view.setVisibility(View.GONE);
+                localWebView.setVisibility(View.VISIBLE);
+                progressBar.setVisibility(View.VISIBLE);
             }
             @Override
             public void onPageFinished(WebView view, String url){
-                view.setVisibility(View.VISIBLE);
+                mHandler.removeCallbacks(mRunnableVisibility);
+                mHandler.postDelayed(mRunnableVisibility,1500);
             }
         };
         webView.setWebViewClient(client);
         webView.loadUrl(uri);
-
 
         try {
             ActionBar actionBar = getSupportActionBar();
@@ -84,6 +120,28 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    public void setTaskBarColored() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT)
+        {
+            try {
+                View view = findViewById(R.id.status_bar);
+                view.setVisibility(View.VISIBLE);
+                view.getLayoutParams().height=getStatusBarHeight();
+                Window w = getWindow();
+                w.setFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS, WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
+            }catch (Exception e){
+                e.printStackTrace();
+            }
+        }
+    }
+    public int getStatusBarHeight() {
+        int result = 0;
+        int resourceId = getResources().getIdentifier("status_bar_height", "dimen", "android");
+        if (resourceId > 0) {
+            result = getResources().getDimensionPixelSize(resourceId);
+        }
+        return result;
+    }
 
     private class ParseTask extends AsyncTask<JSONObject, Void, String> {
 

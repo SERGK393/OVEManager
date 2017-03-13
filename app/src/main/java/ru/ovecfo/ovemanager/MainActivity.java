@@ -18,6 +18,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
+import android.view.animation.AlphaAnimation;
+import android.view.animation.TranslateAnimation;
 import android.webkit.SslErrorHandler;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
@@ -53,8 +55,6 @@ public class MainActivity extends AppCompatActivity {
     WebView webView = null;
     WebView localWebView = null;
     ProgressBar progressBar = null;
-    Handler mHandler = null;
-    Runnable mRunnableVisibility = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -67,16 +67,6 @@ public class MainActivity extends AppCompatActivity {
         progressBar=(ProgressBar)findViewById(R.id.progressBar);
         String uri = "https://www.ove-cfo.ru/mobile";
         String uri_local = "file:///android_asset/index.html";
-
-        mHandler = new Handler();
-        mRunnableVisibility = new Runnable() {
-            @Override
-            public void run() {
-                webView.setVisibility(View.VISIBLE);
-                localWebView.setVisibility(View.GONE);
-                progressBar.setVisibility(View.GONE);
-            }
-        };
 
         webView.getSettings().setJavaScriptEnabled(true);
         localWebView.getSettings().setJavaScriptEnabled(true);
@@ -94,14 +84,15 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon){
-                view.setVisibility(View.GONE);
-                localWebView.setVisibility(View.VISIBLE);
+                //fadeOut(view);
+                fadeIn(localWebView);
                 progressBar.setVisibility(View.VISIBLE);
             }
             @Override
             public void onPageFinished(WebView view, String url){
-                mHandler.removeCallbacks(mRunnableVisibility);
-                mHandler.postDelayed(mRunnableVisibility,1500);
+                //fadeIn(view);
+                fadeOut(localWebView);
+                progressBar.setVisibility(View.GONE);
             }
         };
         webView.setWebViewClient(client);
@@ -141,6 +132,28 @@ public class MainActivity extends AppCompatActivity {
             result = getResources().getDimensionPixelSize(resourceId);
         }
         return result;
+    }
+
+    public void fadeIn(View view)
+    {
+        view.clearAnimation();
+        view.setAlpha(1);
+        /*AlphaAnimation animate = new AlphaAnimation(0,1);
+        animate.setDuration(300);
+        //animate.setFillAfter(true);
+        view.startAnimation(animate);*/
+        view.setVisibility(View.VISIBLE);
+    }
+    public void fadeOut(View view)
+    {
+        view.clearAnimation();
+        view.setAlpha(1);
+        view.setVisibility(View.VISIBLE);
+        AlphaAnimation animate = new AlphaAnimation(1,0);
+        animate.setDuration(1500);
+        //animate.setFillAfter(true);
+        view.startAnimation(animate);
+        view.setVisibility(View.GONE);
     }
 
     private class ParseTask extends AsyncTask<JSONObject, Void, String> {

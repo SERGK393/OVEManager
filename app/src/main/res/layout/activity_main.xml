@@ -31,7 +31,7 @@
             android:layout_height="match_parent"
             android:scrollbars="none"
             android:overScrollMode="never"
-            tools:background="#38b4f6">
+            tools:background="#0BA0F0">
         </WebView>
 
         <ProgressBar

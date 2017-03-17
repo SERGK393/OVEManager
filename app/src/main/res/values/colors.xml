@@ -5,4 +5,5 @@
     <color name="colorAccent">@android:color/holo_orange_dark</color>
     <color name="text_card_number_color">#FFF</color>
     <color name="text_percent_color">#FFF</color>
+    <color name="popup_background">#80333333</color>
 </resources>

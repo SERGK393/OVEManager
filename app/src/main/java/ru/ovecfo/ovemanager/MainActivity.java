@@ -1,6 +1,7 @@
 package ru.ovecfo.ovemanager;
 
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
@@ -52,6 +53,8 @@ import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.SocketTimeoutException;
 import java.net.URL;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 
 import javax.net.ssl.HttpsURLConnection;
 
@@ -99,8 +102,11 @@ public class MainActivity extends AppCompatActivity {
         WebViewClient client = new WebViewClient(){
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url){
-                if(isNetworkAvailable()) view.loadUrl(url);
-                else showErrorSplash();
+                if(isNetworkAvailable()) {
+                    view.loadUrl(url);
+                    //else showErrorSplash();
+                    new SaveHTMLTask().execute(url);
+                }else new SaveHTMLTask().execute(url);
                 return true;
             }
 
@@ -118,8 +124,11 @@ public class MainActivity extends AppCompatActivity {
             }
         };
         webView.setWebViewClient(client);
-        if(isNetworkAvailable()) webView.loadUrl(uri);
-        else showErrorSplash();
+        if(isNetworkAvailable()) {
+            webView.loadUrl(uri);
+            //else showErrorSplash();
+            new SaveHTMLTask().execute(uri);
+        }else new SaveHTMLTask().execute(uri);
 
         try {
             ActionBar actionBar = getSupportActionBar();
@@ -132,6 +141,43 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(getApplicationContext(),e.getMessage(),Toast.LENGTH_LONG).show();
             e.printStackTrace();
         }
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+
+        // Checks the orientation of the screen
+        if (newConfig.orientation == Configuration.ORIENTATION_LANDSCAPE) {
+            Toast.makeText(this, "landscape", Toast.LENGTH_SHORT).show();
+        } else if (newConfig.orientation == Configuration.ORIENTATION_PORTRAIT){
+            Toast.makeText(this, "portrait", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    public final String md5(final String s) {
+        final String MD5 = "MD5";
+        try {
+            // Create MD5 Hash
+            MessageDigest digest = java.security.MessageDigest
+                    .getInstance(MD5);
+            digest.update(s.getBytes());
+            byte messageDigest[] = digest.digest();
+
+            // Create Hex String
+            StringBuilder hexString = new StringBuilder();
+            for (byte aMessageDigest : messageDigest) {
+                String h = Integer.toHexString(0xFF & aMessageDigest);
+                while (h.length() < 2)
+                    h = "0" + h;
+                hexString.append(h);
+            }
+            return hexString.toString();
+
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        }
+        return "";
     }
 
     private boolean isNetworkAvailable() {
@@ -294,7 +340,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    /*
+
     private class SaveHTMLTask extends AsyncTask<String, Void, String> {
 
         HttpsURLConnection urlConnection = null;
@@ -332,10 +378,9 @@ public class MainActivity extends AppCompatActivity {
 
                     int oveIndex = urlString.indexOf("ove-cfo.ru/mobile");
                     if(oveIndex>1) {
-                        oveIndex+=11;
                         // отрываем поток для записи
                         BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(
-                                openFileOutput(urlString.substring(oveIndex)+"_cache.html", MODE_PRIVATE)));
+                                openFileOutput(md5(urlString)+"_cache.html", MODE_PRIVATE)));
                         // пишем данные
                         bw.write(result);
                         // закрываем поток
@@ -350,11 +395,10 @@ public class MainActivity extends AppCompatActivity {
             }else{
                 int oveIndex = urlString.indexOf("ove-cfo.ru/mobile");
                 if(oveIndex>1) {
-                    oveIndex+=11;
                     try {
                         // открываем поток для чтения
                         BufferedReader br = new BufferedReader(new InputStreamReader(
-                                openFileInput(urlString.substring(oveIndex)+"_cache.html")));
+                                openFileInput(md5(urlString)+"_cache.html")));
                         String str = "";
                         // читаем содержимое
                         while ((str = br.readLine()) != null) {
@@ -374,7 +418,9 @@ public class MainActivity extends AppCompatActivity {
             super.onPostExecute(strResponse);
 
             if(!isNetworkAvailable())
-                webView.loadDataWithBaseURL(urlString, strResponse, "text/html", "ru_RU", null);
+                if(strResponse.contains("Network is not avaliable"))
+                    showErrorSplash();
+                else webView.loadDataWithBaseURL(urlString, strResponse, "text/html", "ru_RU", null);
         }
-    }*/
+    }
 }

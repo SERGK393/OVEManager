@@ -55,23 +55,31 @@
           <div class="row">
             <nav class="ove-pageNav">
               <ul>
-                <li class="col-4-m no-gutter"><a class="ove-pageNav__link ove-pageNav__link--active">
+                <li class="col-4-m no-gutter"><a class="ove-pageNav__link ove-pageNav__link--active" id="oveLocal1">
                     <svg class="icon ">
                       <use xlink:href="#cart"></use>
                     </svg><span>Каталог</span></a></li>
-                <li class="col-4-m no-gutter"><a class="ove-pageNav__link">
+                <li class="col-4-m no-gutter"><a class="ove-pageNav__link" id="oveLocal2">
                     <svg class="icon ">
                       <use xlink:href="#mobile"></use>
                     </svg><span>Звонок</span></a></li>
-                <li class="col-4-m no-gutter"><a class="ove-pageNav__link">
+                <li class="col-4-m no-gutter"><a class="ove-pageNav__link" id="oveLocal3">
                     <svg class="icon ">
                       <use xlink:href="#card"></use>
-                    </svg><span>Дисконтная карта</span></a></li>
+                    </svg><span>Дисконт</span></a></li>
               </ul>
             </nav>
           </div>
         </div>
       </footer>
     </div>
+    <script>
+        window.go_local=function(id){
+            document.getElementById("oveLocal1").className="ove-pageNav__link";
+            document.getElementById("oveLocal2").className="ove-pageNav__link";
+            document.getElementById("oveLocal3").className="ove-pageNav__link";
+            document.getElementById("oveLocal"+id).className="ove-pageNav__link ove-pageNav__link--active";
+        };
+    </script>
   </body>
 </html>

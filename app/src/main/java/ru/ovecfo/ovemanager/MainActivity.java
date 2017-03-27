@@ -1,6 +1,9 @@
 package ru.ovecfo.ovemanager;
 
+import android.Manifest;
+import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.net.ConnectivityManager;
@@ -16,6 +19,7 @@ import android.support.v7.app.ActionBar;
 import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.telephony.TelephonyManager;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
@@ -23,6 +27,9 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.view.animation.AlphaAnimation;
 import android.view.animation.TranslateAnimation;
+import android.webkit.CookieManager;
+import android.webkit.CookieSyncManager;
+import android.webkit.JavascriptInterface;
 import android.webkit.SslErrorHandler;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
@@ -49,16 +56,23 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.net.CookieHandler;
+import java.net.HttpCookie;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.SocketTimeoutException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.List;
 
 import javax.net.ssl.HttpsURLConnection;
 
 public class MainActivity extends AppCompatActivity {
+
+    final private int REQUEST_CODE_ASK_PERMISSIONS = 123321;
 
     WebView webView = null;
     WebView localWebView = null;
@@ -71,11 +85,13 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         setTaskBarColored();
 
+        String uri = "https://www.ove-cfo.ru/mobile/";
+        String uri_local = "file:///android_asset/index.html";
+
         webView=(WebView)findViewById(R.id.webView);
         localWebView=(WebView)findViewById(R.id.localWebView);
         progressBar=(ProgressBar)findViewById(R.id.progressBar);
-        String uri = "https://www.ove-cfo.ru/mobile";
-        String uri_local = "file:///android_asset/index.html";
+
 
         noNet=(LinearLayout)findViewById(R.id.noNet);
         Button noNetClose = (Button)findViewById(R.id.noNet_close);
@@ -91,22 +107,24 @@ public class MainActivity extends AppCompatActivity {
         webView.getSettings().setAppCachePath( getApplicationContext().getCacheDir().getAbsolutePath() );
         webView.getSettings().setAllowFileAccess( true );
         webView.getSettings().setAppCacheEnabled( true );
-        webView.getSettings().setCacheMode( WebSettings.LOAD_DEFAULT ); // load online by default
+        webView.getSettings().setCacheMode( WebSettings.LOAD_CACHE_ELSE_NETWORK ); // load online by default
 
-        if ( !isNetworkAvailable() ) { // loading offline
-            webView.getSettings().setCacheMode( WebSettings.LOAD_CACHE_ELSE_NETWORK );
-        }
+        /*if ( !isNetworkAvailable() ) { // loading offline
+            webView.getSettings().setCacheMode( WebSettings.LOAD_CACHE_ONLY );
+        }*/
 
         localWebView.getSettings().setJavaScriptEnabled(true);
         localWebView.loadUrl(uri_local);
         WebViewClient client = new WebViewClient(){
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url){
-                if(isNetworkAvailable()) {
-                    view.loadUrl(url);
-                    //else showErrorSplash();
-                    new SaveHTMLTask().execute(url);
-                }else new SaveHTMLTask().execute(url);
+                if(url.contains("/mobile/call"))localWebView.loadUrl("javascript:(function () { " + "window.go_local(2);})()");
+                else if(url.contains("/mobile/discount-card"))localWebView.loadUrl("javascript:(function () { " + "window.go_local(3);})()");
+                else localWebView.loadUrl("javascript:(function () { " + "window.go_local(1);})()");
+                if(url.contains("tel:")){
+                    callToPhone(url);
+                }else if(isNetworkAvailable()) view.loadUrl(url);
+                else new LoadHTMLTask().execute(url);
                 return true;
             }
 
@@ -121,14 +139,13 @@ public class MainActivity extends AppCompatActivity {
                 //viewFadeIn(view);
                 viewFadeOut(localWebView);
                 progressBar.setVisibility(View.GONE);
+                view.loadUrl("javascript:(function () { " + "window.android_code='"+phoneCode() + "';})()");
+                if(isNetworkAvailable()) new SaveHTMLTask().execute(url);
             }
         };
         webView.setWebViewClient(client);
-        if(isNetworkAvailable()) {
-            webView.loadUrl(uri);
-            //else showErrorSplash();
-            new SaveHTMLTask().execute(uri);
-        }else new SaveHTMLTask().execute(uri);
+        if(isNetworkAvailable()) webView.loadUrl(uri);
+        else new LoadHTMLTask().execute(uri);
 
         try {
             ActionBar actionBar = getSupportActionBar();
@@ -180,10 +197,36 @@ public class MainActivity extends AppCompatActivity {
         return "";
     }
 
+    public String phoneCode() {
+        String pseudoID = "35" +
+                Build.BOARD.length()%10 + Build.BRAND.length()%10 +
+                Build.CPU_ABI.length()%10 + Build.DEVICE.length()%10 +
+                Build.DISPLAY.length()%10 + Build.HOST.length()%10 +
+                Build.ID.length()%10 + Build.MANUFACTURER.length()%10 +
+                Build.MODEL.length()%10 + Build.PRODUCT.length()%10 +
+                Build.TAGS.length()%10 + Build.TYPE.length()%10 +
+                Build.USER.length()%10;
+        return md5(pseudoID+"saltOvE"+pseudoID.substring(2,5));
+    }
+
     private boolean isNetworkAvailable() {
         ConnectivityManager connectivityManager = (ConnectivityManager) getSystemService( CONNECTIVITY_SERVICE );
         NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
         return activeNetworkInfo != null && activeNetworkInfo.isConnected();
+    }
+
+    private void callToPhone(String url) {
+        if ( Build.VERSION.SDK_INT >= 23) {
+            int hasWriteContactsPermission = checkSelfPermission(Manifest.permission.CALL_PHONE);
+            if (hasWriteContactsPermission != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{Manifest.permission.CALL_PHONE},
+                        REQUEST_CODE_ASK_PERMISSIONS);
+                return;
+            }
+        }
+        Intent intent = new Intent(Intent.ACTION_CALL);
+        intent.setData(Uri.parse(url));
+        startActivity(intent);
     }
 
     private void showErrorSplash(){
@@ -341,10 +384,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
+
     private class SaveHTMLTask extends AsyncTask<String, Void, String> {
 
-        HttpsURLConnection urlConnection = null;
-        BufferedReader reader = null;
         String urlString = "";
 
         @Override
@@ -355,19 +397,24 @@ public class MainActivity extends AppCompatActivity {
             if(isNetworkAvailable()){
                 try {
 
+                    String cookies = CookieManager.getInstance().getCookie(urlString);
+
                     URL url = new URL(urlString);
 
-                    urlConnection = (HttpsURLConnection) url.openConnection();
+                    HttpsURLConnection urlConnection = (HttpsURLConnection) url.openConnection();
                     urlConnection.setReadTimeout(10000);
                     urlConnection.setConnectTimeout(15000);
                     urlConnection.setRequestMethod("GET");
+
+                    if (cookies != null)
+                        urlConnection.setRequestProperty("Cookie", cookies);
 
                     urlConnection.connect();
 
                     InputStream inputStream = urlConnection.getInputStream();
                     StringBuffer buffer = new StringBuffer();
 
-                    reader = new BufferedReader(new InputStreamReader(inputStream));
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
 
                     String line;
                     while ((line = reader.readLine()) != null) {
@@ -392,7 +439,21 @@ public class MainActivity extends AppCompatActivity {
                     result = e.toString();
                     e.printStackTrace();
                 }
-            }else{
+            }
+            return result;
+        }
+    }
+
+    private class LoadHTMLTask extends AsyncTask<String, Void, String> {
+
+        String urlString = "";
+
+        @Override
+        protected String doInBackground(String... params) {
+            // получаем данные с внешнего ресурса
+            String result = "";
+            urlString=params[0];
+            if(!isNetworkAvailable()){
                 int oveIndex = urlString.indexOf("ove-cfo.ru/mobile");
                 if(oveIndex>1) {
                     try {
@@ -420,7 +481,10 @@ public class MainActivity extends AppCompatActivity {
             if(!isNetworkAvailable())
                 if(strResponse.contains("Network is not avaliable"))
                     showErrorSplash();
-                else webView.loadDataWithBaseURL(urlString, strResponse, "text/html", "ru_RU", null);
+                else {
+                    webView.loadDataWithBaseURL(urlString, strResponse, "text/html", "ru_RU", urlString);
+                }
         }
     }
+
 }

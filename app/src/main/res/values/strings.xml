@@ -1,6 +1,6 @@
 <resources>
-    <string name="app_name">OVEManager</string>
-    <string name="action_settings">Настройки</string>
+    <string name="app_name">Window to Europe Application</string>
+    <string name="action_settings">Settings</string>
 
     <string name="tab1_tag">tab_tag_1</string>
     <string name="tab2_tag">tab_tag_2</string>
@@ -9,6 +9,4 @@
     <string name="noNet_close">Close application</string>
     <string name="button_ok">OK</string>
     <string name="cancel">Cancel</string>
-
-    <string name="section_format">Hello World from section: %1$d</string>
 </resources>
